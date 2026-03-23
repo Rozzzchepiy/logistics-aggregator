@@ -46,8 +46,15 @@ CREATE TABLE loader_profiles (
 
 CREATE TABLE orders (
                         id BIGSERIAL PRIMARY KEY,
-                        user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+                        customer_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+                        driver_id BIGINT REFERENCES driver_profiles(id) ON DELETE SET NULL,
                         status VARCHAR(50) NOT NULL,
                         total_price DECIMAL(10, 2) NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_loaders (
+                               order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE,
+                               loader_id BIGINT REFERENCES loader_profiles(id) ON DELETE CASCADE,
+                               PRIMARY KEY (order_id, loader_id)
 );
