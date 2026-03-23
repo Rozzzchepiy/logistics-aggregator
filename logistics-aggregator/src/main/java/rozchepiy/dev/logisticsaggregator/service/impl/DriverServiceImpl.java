@@ -28,7 +28,7 @@ public class DriverServiceImpl implements DriverService {
     @Override
     public List<DriverDTO> getAllDrivers() {
         return driverRepository.findAll().stream()
-                .map(driver -> modelMapper.map(driver, DriverDTO.class))
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
@@ -36,7 +36,7 @@ public class DriverServiceImpl implements DriverService {
     public DriverDTO getDriverById(Long id) {
         DriverProfile driver = driverRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Профіль водія не знайдено з ID: " + id));
-        return modelMapper.map(driver, DriverDTO.class);
+        return convertToDto(driver);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class DriverServiceImpl implements DriverService {
         DriverProfile savedProfile = driverRepository.save(driverProfile);
         userRepository.save(user);
 
-        return modelMapper.map(savedProfile, DriverDTO.class);
+        return convertToDto(savedProfile);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class DriverServiceImpl implements DriverService {
         existingProfile.setCarVolume(driverDTO.getCarVolume());
 
         DriverProfile updatedProfile = driverRepository.save(existingProfile);
-        return modelMapper.map(updatedProfile, DriverDTO.class);
+        return convertToDto(updatedProfile);
     }
 
     @Override
@@ -86,5 +86,16 @@ public class DriverServiceImpl implements DriverService {
         userRepository.save(user);
 
         driverRepository.delete(profile);
+    }
+
+    private DriverDTO convertToDto(DriverProfile driver) {
+        DriverDTO dto = modelMapper.map(driver, DriverDTO.class);
+
+        if (driver.getUser() != null) {
+            dto.setName(driver.getUser().getName());
+            dto.setNumber(driver.getUser().getNumber());
+        }
+
+        return dto;
     }
 }

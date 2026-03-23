@@ -5,9 +5,12 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rozchepiy.dev.logisticsaggregator.dto.CustomerDTO;
+import rozchepiy.dev.logisticsaggregator.dto.DriverDTO;
+import rozchepiy.dev.logisticsaggregator.dto.LoaderDTO;
 import rozchepiy.dev.logisticsaggregator.exception.AlreadyExistException;
 import rozchepiy.dev.logisticsaggregator.exception.NotFoundException;
 import rozchepiy.dev.logisticsaggregator.model.CustomerProfile;
+import rozchepiy.dev.logisticsaggregator.model.DriverProfile;
 import rozchepiy.dev.logisticsaggregator.model.User;
 import rozchepiy.dev.logisticsaggregator.model.enums.Role;
 import rozchepiy.dev.logisticsaggregator.repository.CustomerProfileRepository;
@@ -28,7 +31,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public List<CustomerDTO> getAllCustomers() {
         return customerRepository.findAll().stream()
-                .map(customer -> modelMapper.map(customer, CustomerDTO.class))
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
@@ -36,7 +39,7 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerDTO getCustomerById(Long id) {
         CustomerProfile customer = customerRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Профіль замовника не знайдено з ID: " + id));
-        return modelMapper.map(customer, CustomerDTO.class);
+        return convertToDto(customer);
     }
 
     @Override
@@ -57,7 +60,7 @@ public class CustomerServiceImpl implements CustomerService {
         CustomerProfile savedProfile = customerRepository.save(customerProfile);
         userRepository.save(user);
 
-        return modelMapper.map(savedProfile, CustomerDTO.class);
+        return convertToDto(savedProfile);
     }
 
     @Override
@@ -71,5 +74,16 @@ public class CustomerServiceImpl implements CustomerService {
         userRepository.save(user);
 
         customerRepository.delete(profile);
+    }
+
+    private CustomerDTO convertToDto(CustomerProfile customer) {
+        CustomerDTO dto = modelMapper.map(customer, CustomerDTO.class);
+
+        if (customer.getUser() != null) {
+            dto.setName(customer.getUser().getName());
+            dto.setNumber(customer.getUser().getNumber());
+        }
+
+        return dto;
     }
 }

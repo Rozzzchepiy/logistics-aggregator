@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rozchepiy.dev.logisticsaggregator.dto.DriverDTO;
 import rozchepiy.dev.logisticsaggregator.dto.LoaderDTO;
 import rozchepiy.dev.logisticsaggregator.exception.AlreadyExistException;
 import rozchepiy.dev.logisticsaggregator.exception.NotFoundException;
+import rozchepiy.dev.logisticsaggregator.model.DriverProfile;
 import rozchepiy.dev.logisticsaggregator.model.LoaderProfile;
 import rozchepiy.dev.logisticsaggregator.model.User;
 import rozchepiy.dev.logisticsaggregator.model.enums.Role;
@@ -87,5 +89,16 @@ public class LoaderServiceImpl implements LoaderService {
         userRepository.save(user);
 
         loaderRepository.delete(profile);
+    }
+
+    private LoaderDTO convertToDto(LoaderProfile loader) {
+        LoaderDTO dto = modelMapper.map(loader, LoaderDTO.class);
+
+        if (loader.getUser() != null) {
+            dto.setName(loader.getUser().getName());
+            dto.setNumber(loader.getUser().getNumber());
+        }
+
+        return dto;
     }
 }

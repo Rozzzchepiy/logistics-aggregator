@@ -3,12 +3,16 @@ package rozchepiy.dev.logisticsaggregator.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "driver_profiles")
 @Data
 @NoArgsConstructor
+@ToString(exclude = {"user"})
+@EqualsAndHashCode(exclude = {"user"})
 public class DriverProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
