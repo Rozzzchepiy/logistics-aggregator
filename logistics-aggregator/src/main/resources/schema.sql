@@ -23,7 +23,7 @@ CREATE TABLE user_roles (
 CREATE TABLE customer_profiles (
                                    id BIGSERIAL PRIMARY KEY,
                                    user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-                                   customer_rating DECIMAL(3, 2) DEFAULT 5.0
+                                   customer_rating DOUBLE PRECISION DEFAULT 5.0
 );
 
 CREATE TABLE driver_profiles (
@@ -31,8 +31,8 @@ CREATE TABLE driver_profiles (
                                  user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
                                  age INT,
                                  car_brand VARCHAR(100),
-                                 car_volume DECIMAL(5, 2),
-                                 driver_rating DECIMAL(3, 2) DEFAULT 5.0
+                                 car_volume DOUBLE PRECISION,
+                                 driver_rating DOUBLE PRECISION DEFAULT 5.0
 );
 
 CREATE TABLE loader_profiles (
@@ -40,8 +40,8 @@ CREATE TABLE loader_profiles (
                                  user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
                                  age INT,
                                  height INT,
-                                 weight DECIMAL(5, 2),
-                                 loader_rating DECIMAL(3, 2) DEFAULT 5.0
+                                 weight DOUBLE PRECISION,
+                                 loader_rating DOUBLE PRECISION DEFAULT 5.0
 );
 
 CREATE TABLE orders (
