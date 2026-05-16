@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import rozchepiy.dev.logisticsaggregator.model.enums.OrderStatus;
+import rozchepiy.dev.logisticsaggregator.model.enums.OrderType;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
@@ -22,6 +23,12 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Column(name = "description", nullable = false, length = 1000)
+    private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
@@ -45,4 +52,26 @@ public class Order {
 
     @Column(name = "total_price", nullable = false)
     private BigDecimal totalPrice;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false)
+    private OrderType orderType;
+
+    @Column(name = "scheduled_time", nullable = false)
+    private java.time.LocalDateTime scheduledTime;
+
+    @Column(name = "required_car_volume")
+    private Double requiredCarVolume;
+
+    @Column(name = "required_car_weight")
+    private Double requiredCarWeight;
+
+    @Column(name = "truck_price_per_hour")
+    private BigDecimal truckPricePerHour;
+
+    @Column(name = "required_loaders_count")
+    private Integer requiredLoadersCount;
+
+    @Column(name = "loader_price_per_hour")
+    private BigDecimal loaderPricePerHour;
 }

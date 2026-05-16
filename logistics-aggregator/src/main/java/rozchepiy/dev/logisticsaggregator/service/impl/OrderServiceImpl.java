@@ -11,6 +11,7 @@ import rozchepiy.dev.logisticsaggregator.model.LoaderProfile;
 import rozchepiy.dev.logisticsaggregator.model.Order;
 import rozchepiy.dev.logisticsaggregator.model.User;
 import rozchepiy.dev.logisticsaggregator.model.enums.OrderStatus;
+import rozchepiy.dev.logisticsaggregator.model.enums.OrderType;
 import rozchepiy.dev.logisticsaggregator.repository.DriverProfileRepository;
 import rozchepiy.dev.logisticsaggregator.repository.LoaderProfileRepository;
 import rozchepiy.dev.logisticsaggregator.repository.OrderRepository;
@@ -53,8 +54,18 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = new Order();
         order.setCustomer(customer);
-        order.setTotalPrice(orderDTO.getTotalPrice());
+        order.setTitle(orderDTO.getTitle());
+        order.setDescription(orderDTO.getDescription());
         order.setStatus(OrderStatus.CREATED);
+
+        order.setOrderType(OrderType.valueOf(orderDTO.getOrderType()));
+        order.setScheduledTime(orderDTO.getScheduledTime());
+        order.setRequiredCarVolume(orderDTO.getRequiredCarVolume());
+        order.setRequiredCarWeight(orderDTO.getRequiredCarWeight());
+        order.setTruckPricePerHour(orderDTO.getTruckPricePerHour());
+        order.setRequiredLoadersCount(orderDTO.getRequiredLoadersCount());
+        order.setLoaderPricePerHour(orderDTO.getLoaderPricePerHour());
+        order.setTotalPrice(orderDTO.getTotalPrice());
 
         Order savedOrder = orderRepository.save(order);
         return convertToDto(savedOrder);
@@ -62,19 +73,28 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderDTO assignDriver(Long orderId, Long driverId) {
+    public OrderDTO assignDriver(Long orderId, Long userId) { // Тепер приймаємо userId
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Замовлення не знайдено з ID: " + orderId));
 
-        DriverProfile driver = driverRepository.findById(driverId)
-                .orElseThrow(() -> new NotFoundException("Водія не знайдено з ID: " + driverId));
+        // 1. Шукаємо Юзера
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Користувача не знайдено з ID: " + userId));
+
+        // 2. Дістаємо його профіль водія
+        DriverProfile driver = user.getDriverProfile();
+        if (driver == null) {
+            throw new RuntimeException("У цього користувача немає профілю водія!");
+        }
 
         if (order.getDriver() != null) {
             throw new RuntimeException("Це замовлення вже має водія!");
         }
 
         order.setDriver(driver);
-        order.setStatus(OrderStatus.ACCEPTED);
+
+        // Розумна перевірка статусу
+        updateStatusIfFullyStaffed(order);
 
         Order updatedOrder = orderRepository.save(order);
         return convertToDto(updatedOrder);
@@ -82,17 +102,50 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderDTO assignLoader(Long orderId, Long loaderId) {
+    public OrderDTO assignLoader(Long orderId, Long userId) { // Тепер приймаємо userId
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Замовлення не знайдено з ID: " + orderId));
 
-        LoaderProfile loader = loaderRepository.findById(loaderId)
-                .orElseThrow(() -> new NotFoundException("Вантажника не знайдено з ID: " + loaderId));
+        // 1. Шукаємо Юзера
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Користувача не знайдено з ID: " + userId));
+
+        // 2. Дістаємо його профіль вантажника
+        LoaderProfile loader = user.getLoaderProfile();
+        if (loader == null) {
+            throw new RuntimeException("У цього користувача немає профілю вантажника!");
+        }
 
         order.getLoaders().add(loader);
 
+        // Розумна перевірка статусу
+        updateStatusIfFullyStaffed(order);
+
         Order updatedOrder = orderRepository.save(order);
         return convertToDto(updatedOrder);
+    }
+
+    // --- ДОПОМІЖНИЙ МЕТОД: Перевірка чи зібрана команда ---
+    private void updateStatusIfFullyStaffed(Order order) {
+        boolean isDriverFulfilled = true;
+        boolean areLoadersFulfilled = true;
+
+        if (order.getOrderType() == OrderType.TRUCK_ONLY || order.getOrderType() == OrderType.BOTH) {
+            isDriverFulfilled = (order.getDriver() != null);
+        }
+
+        if (order.getOrderType() == OrderType.LOADERS_ONLY || order.getOrderType() == OrderType.BOTH) {
+            int currentLoaders = order.getLoaders() != null ? order.getLoaders().size() : 0;
+            int requiredLoaders = order.getRequiredLoadersCount() != null ? order.getRequiredLoadersCount() : 0;
+            areLoadersFulfilled = (currentLoaders >= requiredLoaders);
+        }
+
+        // Якщо всі є - переводимо в ACCEPTED, інакше залишаємо CREATED
+        if (isDriverFulfilled && areLoadersFulfilled) {
+            order.setStatus(OrderStatus.ACCEPTED);
+        } else {
+            order.setStatus(OrderStatus.CREATED);
+        }
     }
 
     @Override
@@ -100,13 +153,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderDTO updateOrderStatus(Long orderId, String newStatus) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Замовлення не знайдено з ID: " + orderId));
-
-        try {
-            order.setStatus(OrderStatus.valueOf(newStatus.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Невірний статус замовлення. Доступні: CREATED, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED");
-        }
-
+        order.setStatus(OrderStatus.valueOf(newStatus.toUpperCase()));
         Order updatedOrder = orderRepository.save(order);
         return convertToDto(updatedOrder);
     }
@@ -121,18 +168,18 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderDTO convertToDto(Order order) {
         OrderDTO dto = modelMapper.map(order, OrderDTO.class);
-
         dto.setCustomerId(order.getCustomer().getId());
 
         if (order.getDriver() != null) {
             dto.setDriverId(order.getDriver().getId());
+            dto.setDriverUserId(order.getDriver().getUser().getId());
         }
 
         if (order.getLoaders() != null && !order.getLoaders().isEmpty()) {
-            Set<Long> loaderIds = order.getLoaders().stream()
-                    .map(LoaderProfile::getId)
+            Set<Long> loaderUserIds = order.getLoaders().stream()
+                    .map(loader -> loader.getUser().getId())
                     .collect(Collectors.toSet());
-            dto.setLoaderIds(loaderIds);
+            dto.setLoaderUserIds(loaderUserIds);
         }
 
         return dto;
